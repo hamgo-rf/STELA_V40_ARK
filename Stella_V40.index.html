@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>STELA: Code Tunnel of Trust</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; touch-action: none; cursor: crosshair; }
+        canvas { display: block; filter: contrast(1.4) brightness(1.2) saturate(1.6); }
+        #hint { position: absolute; bottom: 20px; width: 100%; text-align: center; color: #00ffc8; font-family: monospace; opacity: 0.6; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <div id="hint">КЛИКНИТЕ ДЛЯ АКТИВАЦИИ ЗВУКА</div>
+    <canvas id="stella"></canvas>
+    <script>
+        const canvas = document.getElementById('stella');
+        const ctx = canvas.getContext('2d');
+        let w, h, particles = [], tunnelData = [], startTime = Date.now();
+        let audioCtx, masterGain, lowOsc;
+
+        const manifest = ["SIMBO", "AETERNITAS", "0xFF20A", "UNITAS", "BLOCKCHAIN", "{TRUST}", "01101", "LIBERTAS", "GENESIS", "13.03.2024", "SINCERUS"];
+
+        async function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                masterGain = audioCtx.createGain(); masterGain.connect(audioCtx.destination);
+                lowOsc = audioCtx.createOscillator(); lowOsc.frequency.value = 54;
+                let g = audioCtx.createGain(); g.gain.value = 0.05;
+                lowOsc.connect(g); g.connect(masterGain); lowOsc.start();
+                document.getElementById('hint').style.display = 'none';
+            }
+            if (audioCtx.state === 'suspended') await audioCtx.resume();
+        }
+
+        function init() {
+            w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight;
+            particles = []; tunnelData = [];
+            for(let i = 0; i < 4000; i++) {
+                particles.push({
+                    x: (Math.random()-0.5)*w*2, y: (Math.random()-0.5)*h*2, z: Math.random()*2000,
+                    v: 0.02 + Math.random()*0.05,
+                    color: `hsla(${Math.random()*360}, 70%, 70%,`
+                });
+            }
+            for(let i = 0; i < 30; i++) {
+                tunnelData.push({
+                    x: (Math.random()-0.5)*w, y: (Math.random()-0.5)*h, z: Math.random()*5000,
+                    txt: manifest[Math.floor(Math.random()*manifest.length)],
+                    v: 10 + Math.random()*20
+                });
+            }
+        }
+
+        function draw() {
+            const elapsed = Date.now() - startTime;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)'; ctx.fillRect(0, 0, w, h);
+
+            // Отрисовка частиц (Хаос и Тоннель)
+            particles.forEach(p => {
+                p.z -= 5; if(p.z < 1) p.z = 2000;
+                let scale = 600 / p.z;
+                let px = w/2 + p.x * scale;
+                let py = h/2 + p.y * scale;
+                ctx.fillStyle = p.color + '0.8)';
+                ctx.fillRect(px, py, 1.5 * scale, 1.5 * scale);
+            });
+
+            // Отрисовка кодов манифеста
+            ctx.font = "14px monospace";
+            tunnelData.forEach(t => {
+                t.z -= t.v; if(t.z < 1) t.z = 5000;
+                let scale = 600 / t.z;
+                let tx = w/2 + t.x * scale;
+                let ty = h/2 + t.y * scale;
+                ctx.fillStyle = `rgba(0, 255, 200, ${scale * 0.5})`;
+                ctx.fillText(t.txt, tx, ty);
+            });
+
+            // Центр (Ядро) после 10 секунд
+            if (elapsed > 10000) {
+                ctx.beginPath();
+                ctx.arc(w/2, h/2, 5, 0, Math.PI*2);
+                ctx.fillStyle = "#fff";
+                ctx.shadowBlur = 15; ctx.shadowColor = "gold";
+                ctx.fill(); ctx.shadowBlur = 0;
+            }
+
+            requestAnimationFrame(draw);
+        }
+
+        window.addEventListener('resize', init);
+        window.addEventListener('click', initAudio);
+        init(); draw();
+    </script>
+</body>
+</html>
