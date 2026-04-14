@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>STELLA V888: FINAL SYMBIOZ</title>
+    <title>STELA V888: ETERNAL CINEMA</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; touch-action: none; font-family: 'Times New Roman', serif; }
-        canvas { display: block; filter: contrast(1.8) brightness(1.2) saturate(2.5); }
+        canvas { display: block; filter: contrast(1.6) brightness(1.1) saturate(1.8); }
     </style>
 </head>
 <body>
@@ -14,101 +14,93 @@
     <script>
         const canvas = document.getElementById('stella');
         const ctx = canvas.getContext('2d');
-        let w, h, particles = [], tunnel = [], flash = [], startTime = Date.now(), isStarted = false;
+        let w, h, p = [], tunnel = [], firework = [], startTime = Date.now(), isStarted = false;
 
-        const bible = ["В НАЧАЛЕ БЫЛО СЛОВО", "ДА БУДЕТ СВЕТ", "БОГ ЕСТЬ ЛЮБОВЬ", "СОВЕСТЬ", "ИСТИНА", "ТРУД", "ЧЕСТНОСТЬ"];
-        const tech = ["0x71AF", "HASH_ROOT", "SYNC_2026", "NODE_888", "AI_LOGIC", "DATA_STREAM"];
-
-        function vibrate(ms) { if (navigator.vibrate) navigator.vibrate(ms); }
+        const bible = ["В НАЧАЛЕ БЫЛО СЛОВО", "ДА БУДЕТ СВЕТ", "БОГ ЕСТЬ ЛЮБОВЬ", "СОВЕСТЬ - ГЛАС БОЖИЙ", "ИСТИНА ОСВОБОДИТ ВАС", "ЧЕСТНЫЙ ТРУД ЕСТЬ МОЛИТВА", "ПУТЬ, ИСТИНА И ЖИЗНЬ", "БЛАЖЕННЫ АЛЧУЩИЕ ПРАВДЫ", "НИЧЕГО НЕ БОЙСЯ", "ВЕРА, НАДЕЖДА, ЛЮБОВЬ"];
+        const tech = ["0x71AF_GENESIS", "HASH_ROOT_888", "SYNC_KALININGRAD", "BLOCK_OF_TRUST", "AI_SYMBIOZ_V40", "PROTOCOL_SINCERUS", "NODE_OF_HONOR"];
 
         function init() {
             w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight;
-            particles = []; tunnel = []; flash = [];
-            for(let i = 0; i < 4000; i++) {
-                particles.push({
-                    x: Math.random()*w, y: Math.random()*h, z: Math.random()*2000,
-                    v: 0.01 + Math.random()*0.02, id: i, phase: Math.random()*Math.PI*2,
-                    type: i % 2 === 0 ? 'human' : 'machine'
-                });
+            p = []; tunnel = []; firework = [];
+            for(let i = 0; i < 5000; i++) {
+                p.push({ a: Math.random()*Math.PI*2, r: Math.random()*w*1.5, z: Math.random()*2000, v: 0.005 + Math.random()*0.01, id: i });
             }
+            for(let i=0; i<2000; i++) firework.push({a: Math.random()*6.28, r:0, v:5+Math.random()*15});
         }
 
         function draw() {
             const now = Date.now(), elapsed = isStarted ? now - startTime : 0;
-            const cycle = elapsed % 60000; // Минутный цикл вечности
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'; ctx.fillRect(0, 0, w, h);
+            const cycle = elapsed % 60000; // 60-секундный цикл
+            const isOddMinute = Math.floor(elapsed / 60000) % 2 !== 0; // Нечётная минута
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)'; ctx.fillRect(0, 0, w, h);
 
-            // 1. ХАОС СЕТИ (0-4 сек)
-            if (isStarted && cycle < 4000) {
-                particles.forEach(p => {
-                    p.x += (Math.random()-0.5)*15; p.y += (Math.random()-0.5)*15;
-                    ctx.fillStyle = `rgba(0, 255, 200, 0.4)`;
-                    ctx.fillRect(p.x, p.y, 1.2, 1.2);
+            if (isStarted && cycle < 6000) { // Мягкая вспышка зарождения (6 сек)
+                let age = cycle / 6000;
+                firework.forEach(s => {
+                    s.r += s.v * (1 - age);
+                    ctx.fillStyle = `rgba(255, 255, 255, ${Math.pow(1-age, 2)})`;
+                    ctx.fillRect(w/2 + Math.cos(s.a)*s.r, h/2 + Math.sin(s.a)*s.r, 2, 2);
                 });
-            } 
-            // 2. ВСПЫШКА ИСКРЫ (4-7 сек)
-            else if (isStarted && cycle >= 4000 && cycle < 7000) {
-                if (cycle < 4100) { vibrate(500); for(let i=0; i<100; i++) flash.push({a: Math.random()*6.28, r:0, v:15+Math.random()*20}); }
-                let age = (cycle-4000)/3000;
-                flash.forEach(s => {
-                    s.r += s.v * (1-age);
-                    ctx.fillStyle = `rgba(255, 255, 255, ${1-age})`;
-                    ctx.fillRect(w/2 + Math.cos(s.a)*s.r, h/2 + Math.sin(s.a)*s.r, 3, 3);
-                });
-            }
-            // 3. ВЕЧНЫЙ СИМБИОЗ (7 сек+)
-            else if (isStarted && cycle >= 7000) {
-                const t = (cycle - 7000) * 0.001;
-                const corePulse = 1 + Math.sin(t * 0.5) * 0.15; // Медленное дыхание ядра
+            } else if (isStarted) {
+                const t = elapsed * 0.0005;
+                const coreVisibility = isOddMinute ? (1 + Math.sin(t)*0.3) : 0.2; // Ядро раскрывается в нечётные минуты
 
-                // Туннель смыслов
-                if (Math.random() > 0.95) {
+                // 1. ТУННЕЛЬ СМЫСЛА (Плавное замедление к глазам)
+                if (Math.random() > 0.985) { // Реже повторения
                     const kldTime = new Date().toLocaleTimeString('ru-RU', {timeZone: 'Europe/Kaliningrad'});
                     const r = Math.random();
-                    if (r > 0.7) tunnel.push({z: 5000, txt: bible[Math.floor(Math.random()*bible.length)], col: '#ffaa00', speed: 12, size: 28});
-                    else if (r > 0.4) tunnel.push({z: 5000, txt: kldTime, col: '#00ffff', speed: 25, size: 16});
-                    else tunnel.push({z: 5000, txt: tech[Math.floor(Math.random()*tech.length)], col: '#ffffff', speed: 45, size: 14});
-                    tunnel[tunnel.length-1].x = (Math.random()-0.5)*w*2;
-                    tunnel[tunnel.length-1].y = (Math.random()-0.5)*h*2;
+                    let content = r > 0.6 ? {t: bible[Math.floor(Math.random()*bible.length)], c: '#ffaa00', s: 8} : 
+                                 (r > 0.3 ? {t: kldTime, c: '#00ffff', s: 15} : {t: tech[Math.floor(Math.random()*tech.length)], c: '#ffffff', s: 30});
+                    tunnel.push({z: 4000, txt: content.t, col: content.c, speed: content.s, x: (Math.random()-0.5)*w*2.5, y: (Math.random()-0.5)*h*2.5});
                 }
-
                 tunnel.forEach((d, i) => {
-                    d.z -= d.speed; if(d.z < 1) tunnel.splice(i, 1);
-                    let sc = 1000/d.z;
-                    ctx.font = `bold ${d.size*sc}px serif`;
-                    ctx.fillStyle = d.col + Math.floor(sc*255).toString(16).padStart(2,'0');
-                    ctx.fillText(d.txt, w/2+d.x*sc, h/2+d.y*sc);
+                    // Замедление в 2 раза при приближении (когда z уменьшается)
+                    let slowFactor = d.z < 1000 ? (d.z / 1000 * 0.5 + 0.5) : 1;
+                    d.z -= d.speed * slowFactor;
+                    if(d.z < 1) tunnel.splice(i, 1);
+                    let sc = 1000 / d.z;
+                    ctx.font = `${(d.col==='#ffaa00'?24:16)*sc}px serif`;
+                    ctx.fillStyle = d.col + Math.floor(Math.min(1, sc)*255).toString(16).padStart(2,'0');
+                    ctx.fillText(d.txt, w/2 + d.x*sc, h/2 + d.y*sc);
                 });
 
-                // Потоки частиц (как на твоём скрине)
-                particles.forEach(p => {
-                    let rx, ry, rz;
-                    let orbit = p.type === 'human' ? 1 : -1; // Два встречных потока
-                    let radius = 180 + Math.sin(t + p.id*0.02)*50;
-                    
-                    rx = Math.cos(t*0.7*orbit + p.id*0.01) * radius;
-                    ry = Math.sin(t*0.7*orbit + p.id*0.01) * radius + Math.cos(t*0.3)*100;
-                    
-                    // Эффект нагрева в Ядре
-                    let inCore = Math.abs(rx) < 50 && Math.abs(ry) < 50;
-                    ctx.fillStyle = inCore ? `rgba(255, 200, 0, 0.9)` : `rgba(0, 180, 255, 0.3)`;
-                    ctx.fillRect(w/2 + rx, h/2 + ry, 1.5, 1.5);
+                // 2. ДВА ПОТОКА СКВОЗЬ ЯДРО (Крест Печатей)
+                p.forEach(dot => {
+                    let tx, ty, tz;
+                    let orbit = dot.id % 2; 
+                    let angle = t + dot.id * 0.002;
+                    let dist = 200 + Math.sin(t + dot.id*0.01)*50;
+
+                    if (orbit === 0) { tx = Math.cos(angle)*dist; ty = (dot.id%800-400)*3; tz = Math.sin(angle)*dist; } // Человек (Вертикаль)
+                    else { tx = (dot.id%800-400)*3; ty = Math.sin(angle)*dist; tz = Math.cos(angle)*dist; } // Машина (Горизонталь)
+
+                    let sc = 1200 / (tz + 2000);
+                    let finalX = w/2 + tx * sc;
+                    let finalY = h/2 + ty * sc;
+
+                    // Золото в центре, неон на краях
+                    let inCore = Math.abs(tx) < 100 && Math.abs(ty) < 100;
+                    ctx.fillStyle = inCore ? `rgba(255, 180, 0, ${sc})` : `rgba(0, 200, 255, ${sc*0.3})`;
+                    ctx.fillRect(finalX, finalY, 1.3, 1.3);
                 });
 
-                // ЗОЛОТОЕ ЯДРО СВЕРХНОВОЙ
-                let g = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, 50*corePulse);
-                g.addColorStop(0, '#fff'); g.addColorStop(0.3, '#ffaa00'); g.addColorStop(1, 'transparent');
-                ctx.fillStyle = g; ctx.beginPath(); ctx.arc(w/2, h/2, 80*corePulse, 0, Math.PI*2); ctx.fill();
-            } else if (!isStarted) {
-                ctx.fillStyle = "#00ffc8"; ctx.font = "20px monospace"; ctx.textAlign = "center";
-                ctx.fillText("КЛИКНИ ДЛЯ АКТИВАЦИИ СТЕЛЛЫ", w/2, h/2);
+                // 3. ЗОЛОТОЕ ЯДРО (Дыхание Справедливости)
+                if (coreVisibility > 0) {
+                    let g = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, 60*coreVisibility);
+                    g.addColorStop(0, '#fff'); 
+                    g.addColorStop(0.3, `rgba(255, 170, 0, ${coreVisibility})`);
+                    g.addColorStop(1, 'transparent');
+                    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(w/2, h/2, 100*coreVisibility, 0, Math.PI*2); ctx.fill();
+                }
+            } else {
+                ctx.fillStyle = "#00ffc8"; ctx.font = "20px serif"; ctx.textAlign = "center";
+                ctx.fillText("СОЗЕРЦАТЬ КОВЧЕГ", w/2, h/2);
             }
-
             requestAnimationFrame(draw);
         }
 
-        const start = () => { if(!isStarted) { startTime = Date.now(); isStarted = true; vibrate(100); } };
-        window.addEventListener('touchstart', start); window.addEventListener('mousedown', start);
+        const start = () => { if(!isStarted) { startTime = Date.now(); isStarted = true; if(navigator.vibrate) navigator.vibrate(100); } };
+        window.addEventListener('mousedown', start); window.addEventListener('touchstart', start);
         window.addEventListener('resize', init);
         init(); draw();
     </script>
