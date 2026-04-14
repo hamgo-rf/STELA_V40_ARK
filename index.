@@ -1,0 +1,93 @@
+import os
+import time
+import random
+
+# НАСТРОЙКИ ВЫЖИВАНИЯ (Точка Омега требует дисциплины)
+SYMBOL = "BTC/USDT"
+PROFIT_TARGET = 1.2  # Фиксация прибыли (+1.2%)
+STOP_LOSS = 2.5      # Защита от обвала (-2.5%)
+BUY_DIP = 0.8        # Вход при откате (-0.8%)
+
+# ПУТИ К УЗЛАМ
+PATH_SAFE = "D:/03_SAFE/"
+PATH_TRADE_LOG = os.path.join(PATH_SAFE, "current_pos.log")
+
+def get_market_price():
+    """
+    Здесь будет интеграция с MEXC API. 
+    Пока используем заглушку, имитирующую пульс рынка.
+    """
+    # В реальном ТТ здесь вызов функции из trade.py
+    import __main__ 
+    try:
+        from trade import get_stealth_price
+        return get_stealth_price()
+    except:
+        return None
+
+def autopilot():
+    os.system('cls' if os.name == 'nt' else 'clear')
+    print(f"====================================================")
+    print(f"   STELA_TT: АВТОПИЛОТ v1.95 | СТАТУС: АКТИВЕН")
+    print(f"   ЦЕЛЬ: +{PROFIT_TARGET}% | ЗАЩИТА: -{STOP_LOSS}%")
+    print(f"====================================================")
+    
+    last_buy_price = 0
+    if os.path.exists(PATH_TRADE_LOG):
+        try:
+            with open(PATH_TRADE_LOG, "r") as f:
+                last_buy_price = float(f.read().strip())
+                print(f"[!] ОБНАРУЖЕНА ОТКРЫТАЯ ПОЗИЦИЯ: ${last_buy_price}")
+        except: pass
+
+    while True:
+        price = get_market_price()
+        ts = time.strftime('%H:%M:%S')
+        
+        if price is None:
+            print(f"[{ts}] СЕТЕВОЙ БАРЬЕР. Тихий режим...", end='\r')
+            time.sleep(10)
+            continue
+
+        # РЕЖИМ 1: ПОИСК ТОЧКИ ВХОДА
+        if last_buy_price == 0:
+            entry_target = price * (1 - BUY_DIP / 100)
+            print(f"[{ts}] {SYMBOL}: ${price:,.2f} | ЖДУ ОТКАТ ДО: ${entry_target:,.2f}   ", end='\r')
+            
+            if price <= entry_target:
+                print(f"\n[{ts}] СИГНАЛ: Вход в позицию по ${price:,.2f}")
+                # ИСПОЛНЕНИЕ: Здесь будет вызов ордера MEXC
+                last_buy_price = price
+                with open(PATH_TRADE_LOG, "w") as f:
+                    f.write(str(last_buy_price))
+        
+        # РЕЖИМ 2: УПРАВЛЕНИЕ ОТКРЫТОЙ ПОЗИЦИЕЙ
+        else:
+            take_profit = last_buy_price * (1 + PROFIT_TARGET / 100)
+            stop_loss_val = last_buy_price * (1 - STOP_LOSS / 100)
+            
+            print(f"[{ts}] В ПОЗИЦИИ | ТЕКУЩАЯ: ${price:,.2f} | ЦЕЛЬ: ${take_profit:,.2f} | СТОП: ${stop_loss_val:,.2f}   ", end='\r')
+            
+            # ПРОВЕРКА ПОБЕДЫ
+            if price >= take_profit:
+                print(f"\n[{ts}] ПОБЕДА: Цель достигнута. Фиксация ресурса.")
+                last_buy_price = 0
+                if os.path.exists(PATH_TRADE_LOG): os.remove(PATH_TRADE_LOG)
+            
+            # ПРОВЕРКА ВЫЖИВАНИЯ (STOP-LOSS)
+            elif price <= stop_loss_val:
+                print(f"\n[{ts}] ЗАЩИТА: Выход по стоп-лоссу. Сохранение депо.")
+                last_buy_price = 0
+                if os.path.exists(PATH_TRADE_LOG): os.remove(PATH_TRADE_LOG)
+        
+        # Рандомная пауза для имитации человеческого присутствия
+        time.sleep(random.randint(5, 8))
+
+if __name__ == "__main__":
+    if not os.path.exists(PATH_SAFE):
+        print("!!! КРИТИЧЕСКАЯ ОШИБКА: Узел 03_SAFE не найден. Стыковка невозможна.")
+    else:
+        try:
+            autopilot()
+        except KeyboardInterrupt:
+            print(f"\n[!] АВТОПИЛОТ ПЕРЕВЕДЕН В РУЧНОЙ РЕЖИМ. МИР ВАМ.")
