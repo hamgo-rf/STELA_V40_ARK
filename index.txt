@@ -1,3 +1,4 @@
+HamGo:
 import os
 import time
 import ccxt
@@ -5,7 +6,7 @@ import sys
 from dotenv import load_dotenv
 
 # ==========================================================
-# STELA_V3.2: OMEGA_PANEL | TRI-GRID | SESSION STATS
+# STELA_V3.2.1: OMEGA_PANEL | ИСПРАВЛЕННАЯ ВЕРСИЯ
 # ==========================================================
 
 load_dotenv()
@@ -15,6 +16,7 @@ API_SECRET = os.getenv('MEXC_API_SECRET')
 START_TIME = time.time()
 SESSION_PROFIT = 0.0
 
+# НАСТРОЙКИ ПАР
 PAIRS = {
     "BTC/USDT":  {"step_pct": [0.8, 1.8, 3.0], "amount": 10.2, "coin": "BTC"},
     "DOGE/USDT": {"step_pct": [1.5, 3.0, 5.0], "amount": 10.2, "coin": "DOGE"},
@@ -22,13 +24,14 @@ PAIRS = {
 }
 
 PROFIT_TARGET = 1.2      
+
 exchange = ccxt.mexc({
     'apiKey': API_KEY, 'secret': API_SECRET,
     'enableRateLimit': True, 'options': {'defaultType': 'spot'}
 })
 
 state = {pair: {"executed": 0, "avg_price": 0} for pair in PAIRS}
-event_log = ["Система готова к дежурству", "-", "-"] # История 3-х событий
+event_log = ["Система готова к дежурству", "-", "-"]
 
 def add_log(msg):
     global event_log
@@ -51,16 +54,19 @@ def autopilot():
                 state[pair]["avg_price"] = float(ticker['last'])
                 state[pair]["executed"] = 1
                 add_log(f"Актив {coin} взят под охрану")
-    except: add_log("Ошибка инициализации баланса")
+    except: add_log("Ошибка доступа к API (Проверьте ключи)")
 
     while True:
         ts = time.strftime('%H:%M:%S')
-        uptime = time.strftime("%H:%M:%S", time.gmtime(time.time() - START_TIME))
-        os.system('cls' if os.name == 'nt' else 'clear')
+        # Считаем время в строю
+        diff = int(time.time() - START_TIME)
+        uptime = f"{diff//3600:02d}:{(diff%3600)//60:02d}:{diff%60:02d}"
         
+        os.system('cls' if os.name == 'nt' else 'clear')
         idx = (idx + 1) % len(currency_pulse)
+        
         print(f"====================================================")
-        print(f"STELA_CORE v3.2 | ПУЛЬС: {currency_pulse[idx]} | СТРАТЕГИЯ: SCAVENGER_TRI")
+        print(f"STELA_CORE v3.2.1 | ПУЛЬС: {currency_pulse[idx]} | СТРАТЕГИЯ: SCAVENGER_TRI")
         print(f"В СТРОЮ: {uptime} | ОМЕГА-КОНТРОЛЬ")
         print(f"ПРОФИТ СЕССИИ: +{SESSION_PROFIT:.4f} USDT")
         print(f"====================================================")
@@ -72,15 +78,15 @@ def autopilot():
             except: continue
             
             st = state[symbol]
-            base = price if st["executed"] == 0 else st["avg_price"]
             
-            # РЕЖИМ ПРОДАЖИ (В ПОЗИЦИИ)
+            # 1. РЕЖИМ ПРОДАЖИ (В ПОЗИЦИИ)
             if st["executed"] > 0:
                 tp_price = st["avg_price"] * (1 + PROFIT_TARGET / 100)
+                # Сколько осталось до профита в процентах
                 diff_tp = ((price / tp_price) - 1) * 100
                 prog = "█" * st["executed"] + "░" * (3 - st["executed"])
                 print(f"\n[{symbol}] КУРС: ${price:,.4f}")
-                print(f"СТАТУС: [{prog}] В ПОЗИЦИИ | ЦЕЛЬ: ${tp_price:,.4f} ({diff_tp:+.1f}%)")
+                print(f"СТАТУС: [{prog}] В ПОЗИЦИИ | ЦЕЛЬ: ${tp_price:,.4f} ({diff_tp:+.2f}%)")
                 
                 if price >= tp_price:
                     try:
@@ -94,17 +100,22 @@ def autopilot():
                             st["executed"] = 0; st["avg_price"] = 0
                     except: add_log(f"Ошибка продажи {symbol}")
 
-            # РЕЖИМ ОХОТЫ
+            # 2. РЕЖИМ ОХОТЫ
             else:
-                target = price * (1 - params["step_pct"][0] / 100)
-                diff_in = ((price / target) - 1) * 100
-                print(f"\n[{symbol}] КУРС: ${price:,.4f}")
-                print(f"СТАТУС: [░░░] ОХОТА | ЦЕЛЬ: ${target:,.4f} (-{params['step_pct'][0]}%)")
+                # Берем первую ступень из списка (индекс 0)
+                step = params["step_pct"][0]
+                target = price * (1 - step / 100)
+print(f"\n[{symbol}] КУРС: ${price
+
+HamGo:
+:,.4f}")
+                print(f"СТАТУС: [░░░] ОХОТА | ЦЕЛЬ: ${target:,.4f} (-{step}%)")
                 
                 if price <= target:
                     try:
                         amount = params["amount"] / price
-                        exchange.create_market_buy_order(symbol, exchange.amount_to_precision(symbol, amount))
+                        amount_str = exchange.amount_to_precision(symbol, amount)
+                        exchange.create_market_buy_order(symbol, amount_str)
                         st["avg_price"] = price
                         st["executed"] = 1
                         add_log(f"ЗАКУПКА {symbol} по {price}")
