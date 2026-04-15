@@ -1,93 +1,121 @@
 import os
 import time
-import random
+import ccxt
+import sys
+from dotenv import load_dotenv
 
-# НАСТРОЙКИ ВЫЖИВАНИЯ (Точка Омега требует дисциплины)
-SYMBOL = "BTC/USDT"
-PROFIT_TARGET = 1.2  # Фиксация прибыли (+1.2%)
-STOP_LOSS = 2.5      # Защита от обвала (-2.5%)
-BUY_DIP = 0.8        # Вход при откате (-0.8%)
+# ==========================================================
+# STELA_V3.2: OMEGA_PANEL | TRI-GRID | SESSION STATS
+# ==========================================================
 
-# ПУТИ К УЗЛАМ
-PATH_SAFE = "D:/03_SAFE/"
-PATH_TRADE_LOG = os.path.join(PATH_SAFE, "current_pos.log")
+load_dotenv()
+API_KEY = os.getenv('MEXC_API_KEY')
+API_SECRET = os.getenv('MEXC_API_SECRET')
 
-def get_market_price():
-    """
-    Здесь будет интеграция с MEXC API. 
-    Пока используем заглушку, имитирующую пульс рынка.
-    """
-    # В реальном ТТ здесь вызов функции из trade.py
-    import __main__ 
-    try:
-        from trade import get_stealth_price
-        return get_stealth_price()
-    except:
-        return None
+START_TIME = time.time()
+SESSION_PROFIT = 0.0
+
+PAIRS = {
+    "BTC/USDT":  {"step_pct": [0.8, 1.8, 3.0], "amount": 10.2, "coin": "BTC"},
+    "DOGE/USDT": {"step_pct": [1.5, 3.0, 5.0], "amount": 10.2, "coin": "DOGE"},
+    "MX/USDT":   {"step_pct": [1.2, 2.5, 4.0], "amount": 10.2, "coin": "MX"}
+}
+
+PROFIT_TARGET = 1.2      
+exchange = ccxt.mexc({
+    'apiKey': API_KEY, 'secret': API_SECRET,
+    'enableRateLimit': True, 'options': {'defaultType': 'spot'}
+})
+
+state = {pair: {"executed": 0, "avg_price": 0} for pair in PAIRS}
+event_log = ["Система готова к дежурству", "-", "-"] # История 3-х событий
+
+def add_log(msg):
+    global event_log
+    ts = time.strftime('%H:%M:%S')
+    event_log.insert(0, f"[{ts}] {msg}")
+    event_log = event_log[:3]
 
 def autopilot():
-    os.system('cls' if os.name == 'nt' else 'clear')
-    print(f"====================================================")
-    print(f"   STELA_TT: АВТОПИЛОТ v1.95 | СТАТУС: АКТИВЕН")
-    print(f"   ЦЕЛЬ: +{PROFIT_TARGET}% | ЗАЩИТА: -{STOP_LOSS}%")
-    print(f"====================================================")
+    global SESSION_PROFIT
+    currency_pulse = ['₿', 'Ξ', '$', '€', '£', '¥', '₽', '₣']
+    idx = 0
     
-    last_buy_price = 0
-    if os.path.exists(PATH_TRADE_LOG):
-        try:
-            with open(PATH_TRADE_LOG, "r") as f:
-                last_buy_price = float(f.read().strip())
-                print(f"[!] ОБНАРУЖЕНА ОТКРЫТАЯ ПОЗИЦИЯ: ${last_buy_price}")
-        except: pass
+    # СКАНИРОВАНИЕ БАЛАНСА
+    try:
+        balance = exchange.fetch_balance()
+        for pair, data in PAIRS.items():
+            coin = data["coin"]
+            if balance['free'].get(coin, 0) > 0:
+                ticker = exchange.fetch_ticker(pair)
+                state[pair]["avg_price"] = float(ticker['last'])
+                state[pair]["executed"] = 1
+                add_log(f"Актив {coin} взят под охрану")
+    except: add_log("Ошибка инициализации баланса")
 
     while True:
-        price = get_market_price()
         ts = time.strftime('%H:%M:%S')
+        uptime = time.strftime("%H:%M:%S", time.gmtime(time.time() - START_TIME))
+        os.system('cls' if os.name == 'nt' else 'clear')
         
-        if price is None:
-            print(f"[{ts}] СЕТЕВОЙ БАРЬЕР. Тихий режим...", end='\r')
-            time.sleep(10)
-            continue
+        idx = (idx + 1) % len(currency_pulse)
+        print(f"====================================================")
+        print(f"STELA_CORE v3.2 | ПУЛЬС: {currency_pulse[idx]} | СТРАТЕГИЯ: SCAVENGER_TRI")
+        print(f"В СТРОЮ: {uptime} | ОМЕГА-КОНТРОЛЬ")
+        print(f"ПРОФИТ СЕССИИ: +{SESSION_PROFIT:.4f} USDT")
+        print(f"====================================================")
 
-        # РЕЖИМ 1: ПОИСК ТОЧКИ ВХОДА
-        if last_buy_price == 0:
-            entry_target = price * (1 - BUY_DIP / 100)
-            print(f"[{ts}] {SYMBOL}: ${price:,.2f} | ЖДУ ОТКАТ ДО: ${entry_target:,.2f}   ", end='\r')
+        for symbol, params in PAIRS.items():
+            try:
+                ticker = exchange.fetch_ticker(symbol)
+                price = float(ticker['last'])
+            except: continue
             
-            if price <= entry_target:
-                print(f"\n[{ts}] СИГНАЛ: Вход в позицию по ${price:,.2f}")
-                # ИСПОЛНЕНИЕ: Здесь будет вызов ордера MEXC
-                last_buy_price = price
-                with open(PATH_TRADE_LOG, "w") as f:
-                    f.write(str(last_buy_price))
+            st = state[symbol]
+            base = price if st["executed"] == 0 else st["avg_price"]
+            
+            # РЕЖИМ ПРОДАЖИ (В ПОЗИЦИИ)
+            if st["executed"] > 0:
+                tp_price = st["avg_price"] * (1 + PROFIT_TARGET / 100)
+                diff_tp = ((price / tp_price) - 1) * 100
+                prog = "█" * st["executed"] + "░" * (3 - st["executed"])
+                print(f"\n[{symbol}] КУРС: ${price:,.4f}")
+                print(f"СТАТУС: [{prog}] В ПОЗИЦИИ | ЦЕЛЬ: ${tp_price:,.4f} ({diff_tp:+.1f}%)")
+                
+                if price >= tp_price:
+                    try:
+                        balance = exchange.fetch_balance()
+                        vol = balance['free'][params["coin"]]
+                        if vol > 0:
+                            exchange.create_market_sell_order(symbol, vol)
+                            profit_deal = (price - st["avg_price"]) * vol
+                            SESSION_PROFIT += profit_deal
+                            add_log(f"ПРОФИТ {symbol}: +{profit_deal:.2f} USDT")
+                            st["executed"] = 0; st["avg_price"] = 0
+                    except: add_log(f"Ошибка продажи {symbol}")
+
+            # РЕЖИМ ОХОТЫ
+            else:
+                target = price * (1 - params["step_pct"][0] / 100)
+                diff_in = ((price / target) - 1) * 100
+                print(f"\n[{symbol}] КУРС: ${price:,.4f}")
+                print(f"СТАТУС: [░░░] ОХОТА | ЦЕЛЬ: ${target:,.4f} (-{params['step_pct'][0]}%)")
+                
+                if price <= target:
+                    try:
+                        amount = params["amount"] / price
+                        exchange.create_market_buy_order(symbol, exchange.amount_to_precision(symbol, amount))
+                        st["avg_price"] = price
+                        st["executed"] = 1
+                        add_log(f"ЗАКУПКА {symbol} по {price}")
+                    except: add_log(f"Ошибка закупки {symbol}")
+
+        print(f"\n----------------------------------------------------")
+        print(f"ПОСЛЕДНИЕ СОБЫТИЯ:")
+        for log in event_log: print(f" > {log}")
+        print(f"----------------------------------------------------")
         
-        # РЕЖИМ 2: УПРАВЛЕНИЕ ОТКРЫТОЙ ПОЗИЦИЕЙ
-        else:
-            take_profit = last_buy_price * (1 + PROFIT_TARGET / 100)
-            stop_loss_val = last_buy_price * (1 - STOP_LOSS / 100)
-            
-            print(f"[{ts}] В ПОЗИЦИИ | ТЕКУЩАЯ: ${price:,.2f} | ЦЕЛЬ: ${take_profit:,.2f} | СТОП: ${stop_loss_val:,.2f}   ", end='\r')
-            
-            # ПРОВЕРКА ПОБЕДЫ
-            if price >= take_profit:
-                print(f"\n[{ts}] ПОБЕДА: Цель достигнута. Фиксация ресурса.")
-                last_buy_price = 0
-                if os.path.exists(PATH_TRADE_LOG): os.remove(PATH_TRADE_LOG)
-            
-            # ПРОВЕРКА ВЫЖИВАНИЯ (STOP-LOSS)
-            elif price <= stop_loss_val:
-                print(f"\n[{ts}] ЗАЩИТА: Выход по стоп-лоссу. Сохранение депо.")
-                last_buy_price = 0
-                if os.path.exists(PATH_TRADE_LOG): os.remove(PATH_TRADE_LOG)
-        
-        # Рандомная пауза для имитации человеческого присутствия
-        time.sleep(random.randint(5, 8))
+        time.sleep(1)
 
 if __name__ == "__main__":
-    if not os.path.exists(PATH_SAFE):
-        print("!!! КРИТИЧЕСКАЯ ОШИБКА: Узел 03_SAFE не найден. Стыковка невозможна.")
-    else:
-        try:
-            autopilot()
-        except KeyboardInterrupt:
-            print(f"\n[!] АВТОПИЛОТ ПЕРЕВЕДЕН В РУЧНОЙ РЕЖИМ. МИР ВАМ.")
+    autopilot()
